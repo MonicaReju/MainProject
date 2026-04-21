@@ -1,5 +1,7 @@
 flask==3.0.3
 werkzeug==3.0.3
+gunicorn==21.2.0
+
 ultralytics==8.4.21
 torch>=2.0.0
 torchvision>=0.15.0
