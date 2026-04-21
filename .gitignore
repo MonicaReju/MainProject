@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+uploads/
+model/best.pt
+*.pt
+*.onnx
+.DS_Store

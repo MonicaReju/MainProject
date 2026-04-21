@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AeroScan — Military Aircraft Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green:#00ff88;--green-dim:#00ff8825;--green-mid:#00ff8855;
+  --amber:#ffb800;--red:#ff3a3a;--blue:#00c8ff;
+  --bg:#050a0e;--surface:#0a1520;--surface2:#0d1a28;--surface3:#111f30;
+  --border:#1a3a50;--border2:#0f2535;--text:#c8e0f0;--text-dim:#4a7a9a;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:'Rajdhani',sans-serif;color:var(--text);cursor:crosshair}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,136,0.012) 2px,rgba(0,255,136,0.012) 4px);pointer-events:none;z-index:9999}
+
+.page{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity 0.7s,transform 0.7s;overflow:hidden}
+.page.hidden{opacity:0;pointer-events:none;transform:scale(1.03)}
+
+.grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(0,255,136,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,0.03) 1px,transparent 1px);background-size:40px 40px;animation:gridMove 20s linear infinite}
+@keyframes gridMove{to{background-position:40px 40px}}
+
+.corner{position:absolute;width:18px;height:18px;z-index:5}
+.corner.tl{top:16px;left:16px;border-top:2px solid var(--green);border-left:2px solid var(--green)}
+.corner.tr{top:16px;right:16px;border-top:2px solid var(--green);border-right:2px solid var(--green)}
+.corner.bl{bottom:16px;left:16px;border-bottom:2px solid var(--green);border-left:2px solid var(--green)}
+.corner.br{bottom:16px;right:16px;border-bottom:2px solid var(--green);border-right:2px solid var(--green)}
+
+/* ════ HOME ════ */
+#home{flex-direction:column}
+.radar{position:absolute;width:520px;height:520px;border-radius:50%;border:1px solid rgba(0,255,136,0.08);top:50%;left:50%;transform:translate(-50%,-50%)}
+.radar::before{content:'';position:absolute;inset:-40px;border-radius:50%;border:1px solid rgba(0,255,136,0.05)}
+.radar-sweep{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 270deg,rgba(0,255,136,0.12) 360deg);animation:sweep 4s linear infinite}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.radar-cross::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(0,255,136,0.08);transform:translateY(-50%)}
+.radar-cross::after{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(0,255,136,0.08);transform:translateX(-50%)}
+.blip{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.15}}
+.blip:nth-child(3){top:30%;left:40%;animation-delay:0s}
+.blip:nth-child(4){top:60%;left:62%;animation-delay:0.8s}
+.blip:nth-child(5){top:45%;left:25%;animation-delay:1.5s}
+
+.home-content{position:relative;z-index:10;text-align:center;display:flex;flex-direction:column;align-items:center;gap:24px}
+.top-label{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:6px;color:var(--green);opacity:0;animation:fadeUp 0.6s 0.3s forwards}
+.main-title{font-family:'Orbitron',monospace;font-size:clamp(42px,6.5vw,80px);font-weight:900;line-height:1;opacity:0;animation:fadeUp 0.8s 0.6s forwards}
+.main-title span{color:var(--green);text-shadow:0 0 40px rgba(0,255,136,0.45)}
+.subtitle{font-size:15px;font-weight:300;letter-spacing:5px;color:var(--text-dim);text-transform:uppercase;opacity:0;animation:fadeUp 0.6s 0.8s forwards}
+.tagline{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text-dim);max-width:400px;line-height:1.9;opacity:0;animation:fadeUp 0.6s 1s forwards}
+.tagline em{color:var(--green);font-style:normal}
+.stats-row{display:flex;gap:48px;opacity:0;animation:fadeUp 0.6s 1.2s forwards}
+.stat-val{font-family:'Orbitron',monospace;font-size:24px;font-weight:700;color:var(--green)}
+.stat-label{font-size:10px;letter-spacing:3px;color:var(--text-dim);text-transform:uppercase;margin-top:3px}
+.cta-btn{margin-top:6px;padding:15px 56px;font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:4px;color:var(--bg);background:var(--green);border:none;cursor:pointer;clip-path:polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);transition:all 0.3s;opacity:0;animation:fadeUp 0.6s 1.4s forwards;text-transform:uppercase}
+.cta-btn:hover{box-shadow:0 0 45px rgba(0,255,136,0.55);transform:translateY(-2px)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+.hud-tl,.hud-tr,.hud-bl,.hud-br{position:fixed;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:1px;z-index:200;line-height:1.7}
+.hud-tl{top:10px;left:10px}
+.hud-tr{top:10px;right:10px;text-align:right}
+.hud-bl{bottom:10px;left:10px}
+.hud-br{bottom:10px;right:10px;text-align:right}
+
+/* ════ DETECT ════ */
+#detect{align-items:stretch;padding:0}
+.detect-layout{display:grid;grid-template-columns:320px 1fr;height:100vh;width:100vw;position:relative;z-index:10}
+
+.left-panel{display:flex;flex-direction:column;padding:18px 16px;border-right:1px solid var(--border);gap:12px;background:var(--surface);min-width:0}
+.panel-header{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.panel-title{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:3px;color:var(--green);text-transform:uppercase}
+.back-btn{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);background:none;border:1px solid var(--border);padding:5px 12px;cursor:pointer;letter-spacing:2px;transition:all 0.3s;white-space:nowrap}
+.back-btn:hover{color:var(--green);border-color:var(--green)}
+
+.upload-zone{flex:1;min-height:0;border:1px dashed var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;cursor:pointer;transition:all 0.3s;background:var(--surface2);max-height:280px}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--green);background:rgba(0,255,136,0.03)}
+.upload-icon{width:44px;height:44px;opacity:0.4;transition:opacity 0.3s}
+.upload-zone:hover .upload-icon{opacity:0.75}
+.upload-text{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--text-dim);text-align:center}
+.upload-sub{font-size:11px;color:var(--text-dim);opacity:0.5;letter-spacing:1px}
+#fileInput{display:none}
+
+.preview-wrap{flex:1;min-height:0;position:relative;overflow:hidden;background:var(--surface2);border:1px solid var(--border);display:none;align-items:center;justify-content:center;max-height:280px}
+.preview-wrap.show{display:flex}
+#previewImg{max-width:100%;max-height:100%;object-fit:contain}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);animation:scanMove 1.8s linear infinite;opacity:0}
+.scan-line.active{opacity:1}
+@keyframes scanMove{from{top:0}to{top:100%}}
+
+.predict-btn{flex-shrink:0;padding:12px;font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--bg);background:var(--green);border:none;cursor:pointer;transition:all 0.3s;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);display:none}
+.predict-btn.show{display:block}
+.predict-btn:hover{box-shadow:0 0 25px rgba(0,255,136,0.5)}
+.predict-btn:disabled{opacity:0.45;cursor:not-allowed}
+
+.right-panel{display:grid;grid-template-rows:auto auto 1fr;overflow:hidden;background:var(--bg)}
+.right-topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--border);flex-shrink:0}
+.status-bar{display:flex;align-items:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--text-dim)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--text-dim);flex-shrink:0;transition:all 0.3s}
+.status-dot.active{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.4s infinite}
+.status-dot.found{background:var(--green);box-shadow:0 0 8px var(--green)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+.results-scroll{overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--border)}
+
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;opacity:0.25;min-height:300px}
+.empty-state p{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px}
+
+.main-result{display:grid;grid-template-columns:1fr 1fr;gap:16px;opacity:0;transform:translateY(12px);transition:all 0.5s}
+.main-result.show{opacity:1;transform:translateY(0)}
+
+.pred-img-box{background:var(--surface2);border:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;position:relative}
+.pred-img-box img{width:100%;display:block;object-fit:contain;max-height:260px}
+.pred-img-label{padding:8px 12px;background:var(--surface);border-top:1px solid var(--border);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text-dim);display:flex;justify-content:space-between}
+.pred-img-label span{color:var(--green)}
+
+.identity-card{background:var(--surface2);border:1px solid var(--border);padding:18px;display:flex;flex-direction:column;gap:14px}
+.aircraft-name{font-family:'Orbitron',monospace;font-size:32px;font-weight:900;line-height:1;letter-spacing:2px}
+.aircraft-full{font-size:12px;letter-spacing:3px;color:var(--text-dim);text-transform:uppercase}
+
+.conf-block{display:flex;flex-direction:column;gap:6px}
+.conf-header{display:flex;justify-content:space-between;align-items:baseline}
+.conf-key{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase}
+.conf-num{font-family:'Orbitron',monospace;font-size:22px;font-weight:700}
+.conf-track{height:6px;background:rgba(255,255,255,0.05);border:1px solid var(--border);overflow:hidden;position:relative}
+.conf-fill{height:100%;width:0;transition:width 1.3s cubic-bezier(0.16,1,0.3,1)}
+.conf-fill::after{content:'';position:absolute;right:0;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.8)}
+.seg-row{display:flex;gap:2px;height:4px;margin-top:2px}
+.seg{flex:1;height:100%;border-radius:1px;opacity:0;transform:scaleY(0.3);transition:all 0.04s}
+.seg.on{opacity:1;transform:scaleY(1)}
+
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.info-cell{background:var(--surface);border:1px solid var(--border2);padding:10px 12px}
+.info-key{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:3px}
+.info-val{font-family:'Orbitron',monospace;font-size:12px;font-weight:600}
+
+.bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;opacity:0;transform:translateY(12px);transition:all 0.5s 0.15s}
+.bottom-row.show{opacity:1;transform:translateY(0)}
+
+.writeup-card{background:var(--surface2);border:1px solid var(--border);padding:16px}
+.section-label{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--green);margin-bottom:10px;text-transform:uppercase}
+.writeup-text{font-size:13px;line-height:1.85;color:var(--text-dim);letter-spacing:0.2px}
+.writeup-text strong{color:var(--text);font-weight:600}
+
+.det-card{background:var(--surface2);border:1px solid var(--border);padding:16px}
+.det-list{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.det-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border2)}
+.det-num{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim);min-width:18px}
+.det-class{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;flex:1}
+.det-conf-bar{flex:2;height:4px;background:var(--border2);position:relative}
+.det-conf-fill{height:100%;transition:width 1s}
+.det-conf-val{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--amber);min-width:40px;text-align:right}
+
+/* error toast */
+.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-family:'Share Tech Mono',monospace;font-size:12px;padding:10px 24px;letter-spacing:2px;z-index:9999;border-radius:2px;display:none}
+.toast.show{display:block;animation:fadeUp 0.3s ease}
+
+.proc-overlay{position:absolute;inset:0;background:rgba(5,10,14,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:50}
+.proc-overlay.active{display:flex}
+.proc-ring{width:50px;height:50px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.proc-label{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:4px;color:var(--green)}
+.proc-step{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<div class="hud-tl">SYS // AEROSCAN v2.4<br><span id="clock"></span></div>
+<div class="hud-tr">YOLOv8s // 1024px<br>mAP@50: 84.13%</div>
+<div class="hud-bl">5 CLASS — F16 · F18 · F35 · F15 · C130</div>
+<div class="hud-br" id="hudBR">STATUS: STANDBY<br>READY</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ HOME ══ -->
+<div class="page" id="home">
+  <div class="grid-bg"></div>
+  <div class="radar">
+    <div class="radar-sweep"></div>
+    <div class="radar-cross"></div>
+    <div class="blip"></div><div class="blip"></div><div class="blip"></div>
+  </div>
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+  <div class="home-content">
+    <div class="top-label">// CLASSIFIED INTELLIGENCE SYSTEM //</div>
+    <div class="main-title">AERO<span>SCAN</span></div>
+    <div class="subtitle">Military Aircraft Intelligence</div>
+    <div class="tagline">Powered by <em>YOLOv8s</em> deep learning — detect and classify military aircraft with <em>84.1%</em> mAP@0.5 accuracy across 5 aircraft categories.</div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-val">84.1%</div><div class="stat-label">mAP@50</div></div>
+      <div class="stat"><div class="stat-val">5</div><div class="stat-label">Classes</div></div>
+      <div class="stat"><div class="stat-val">11.1M</div><div class="stat-label">Params</div></div>
+      <div class="stat"><div class="stat-val">13ms</div><div class="stat-label">Inference</div></div>
+    </div>
+    <button class="cta-btn" onclick="window.location='/scan'">INITIATE SCAN</button>
+  </div>
+</div>
+
+<!-- ══ DETECT ══ -->
+<div class="page hidden" id="detect">
+  <div class="grid-bg"></div>
+  <div class="detect-layout">
+
+    <div class="left-panel">
+      <div class="panel-header">
+        <div class="panel-title">// UPLOAD</div>
+        <button class="back-btn" onclick="goHome()">← BACK</button>
+      </div>
+
+      <div class="upload-zone" id="uploadZone"
+           onclick="document.getElementById('fileInput').click()"
+           ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+        <svg class="upload-icon" viewBox="0 0 48 48" fill="none">
+          <rect x="6" y="6" width="36" height="36" rx="2" stroke="#00ff88" stroke-width="1" stroke-dasharray="4 3"/>
+          <line x1="24" y1="16" x2="24" y2="32" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round"/>
+          <polyline points="18,22 24,16 30,22" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <line x1="16" y1="34" x2="32" y2="34" stroke="#00ff88" stroke-width="1" opacity="0.5"/>
+        </svg>
+        <div class="upload-text">UPLOAD IMAGE</div>
+        <div class="upload-sub">JPG · PNG · drag &amp; drop</div>
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFile(event)">
+      </div>
+
+      <div class="preview-wrap" id="previewWrap">
+        <img id="previewImg" src="" alt="">
+        <div class="scan-line" id="scanLine"></div>
+        <div class="proc-overlay" id="procOverlay">
+          <div class="proc-ring"></div>
+          <div class="proc-label">ANALYZING</div>
+          <div class="proc-step" id="procStep">Initializing...</div>
+        </div>
+      </div>
+
+      <button class="predict-btn" id="predictBtn" onclick="runPrediction()">RUN DETECTION</button>
+
+      <div style="border:1px solid var(--border);padding:10px;background:var(--surface2)">
+        <div class="panel-title" style="font-size:9px;margin-bottom:8px">DETECTABLE CLASSES</div>
+        <div style="display:flex;flex-direction:column;gap:4px" id="classLegend"></div>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="right-topbar">
+        <div class="panel-title" style="font-size:11px">// INTELLIGENCE REPORT</div>
+        <div class="status-bar">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">AWAITING IMAGE UPLOAD</span>
+        </div>
+      </div>
+
+      <div class="results-scroll" id="resultsScroll">
+        <div class="empty-state" id="emptyState">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+            <line x1="24" y1="4" x2="24" y2="44" stroke="currentColor" stroke-width="0.5" opacity="0.5"/>
+            <line x1="4" y1="24" x2="44" y2="24" stroke="currentColor" stroke-width="0.5" opacity="0.5"/>
+            <circle cx="24" cy="24" r="3" fill="currentColor"/>
+          </svg>
+          <p>NO TARGET ACQUIRED</p>
+          <p style="font-size:9px;opacity:0.6">Upload an image and run detection</p>
+        </div>
+
+        <div class="main-result" id="mainResult">
+          <div class="pred-img-box" id="predImgBox">
+            <!-- annotated image injected here -->
+            <div class="pred-img-label">
+              <span>DETECTION OUTPUT</span>
+              <span id="imgSizeInfo">—</span>
+            </div>
+          </div>
+          <div class="identity-card">
+            <div>
+              <div class="aircraft-name" id="resName">—</div>
+              <div class="aircraft-full" id="resFullName">—</div>
+            </div>
+            <div class="conf-block">
+              <div class="conf-header">
+                <span class="conf-key">Confidence</span>
+                <span class="conf-num" id="resConf">—</span>
+              </div>
+              <div class="conf-track"><div class="conf-fill" id="confFill"></div></div>
+              <div class="seg-row" id="segRow"></div>
+            </div>
+            <div class="info-grid" id="infoGrid"></div>
+          </div>
+        </div>
+
+        <div class="bottom-row" id="bottomRow">
+          <div class="writeup-card">
+            <div class="section-label">Aircraft Profile</div>
+            <div class="writeup-text" id="resWriteup"></div>
+          </div>
+          <div class="det-card">
+            <div class="section-label">All Detections</div>
+            <div class="det-list" id="detList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Aircraft writeups ──────────────────────────────────────────────────────
+const WRITEUPS = {
+  F16: 'The <strong>F-16 Fighting Falcon</strong> is a single-engine supersonic multirole fighter developed by General Dynamics. Entering service in 1978 it became one of the most widely produced fighters ever built. Distinguished by its blended wing-body design, a single ventral air intake, and a frameless bubble canopy offering 360° pilot visibility.',
+  F18: 'The <strong>F/A-18 Hornet</strong> is a twin-engine supersonic carrier-capable multirole combat aircraft. The primary strike fighter of the US Navy and Marine Corps, easily identified by its twin tail fins, twin engines, and distinctive leading-edge extensions.',
+  F35: 'The <strong>F-35 Lightning II</strong> is a family of single-engine fifth-generation stealth multirole fighters. It incorporates advanced stealth shaping, AESA radar, and comprehensive sensor fusion. Features a distinctive single-engine design with a diverterless supersonic inlet.',
+  F15: 'The <strong>F-15 Eagle</strong> is a twin-engine all-weather tactical fighter with an undefeated combat record of over 100 aerial victories. Identifiable by its large twin-tail configuration and wide-set twin engine arrangement. Exceptional thrust-to-weight ratio gives unmatched climb performance.',
+  C130: 'The <strong>C-130 Hercules</strong> is a four-engine turboprop military transport in continuous production since 1954. Instantly recognized by its high-wing configuration, four turboprop engines with four-blade propellers, and upswept rear fuselage with a loading ramp.'
+};
+
+const CLASS_COLORS = {F16:'#E63946',F18:'#457B9D',F35:'#2A9D8F',F15:'#E9C46A',C130:'#9B5DE5'};
+const CLASS_ROLES  = {F16:'Multirole Fighter',F18:'Carrier Strike Fighter',F35:'5th-Gen Stealth',F15:'Air Superiority',C130:'Military Transport'};
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+function updateClock(){document.getElementById('clock').textContent=new Date().toISOString().replace('T',' ').substring(0,19)+' UTC'}
+setInterval(updateClock,1000); updateClock();
+
+// ── Class legend ───────────────────────────────────────────────────────────
+const leg = document.getElementById('classLegend');
+Object.entries(CLASS_COLORS).forEach(([k,c])=>{
+  const row = document.createElement('div');
+  row.style.cssText='display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--surface);border:1px solid var(--border)';
+  row.innerHTML=`<div style="width:8px;height:8px;border-radius:50%;background:${c};box-shadow:0 0 6px ${c}40;flex-shrink:0"></div>
+    <span style="font-family:Orbitron,monospace;font-size:10px;font-weight:700;color:${c};min-width:36px">${k}</span>
+    <span style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:1px">${CLASS_ROLES[k]}</span>`;
+  leg.appendChild(row);
+});
+
+// ── Nav ────────────────────────────────────────────────────────────────────
+function goToDetect(){
+  document.getElementById('home').classList.add('hidden');
+  document.getElementById('detect').classList.remove('hidden');
+  document.getElementById('hudBR').innerHTML='STATUS: ACTIVE<br>AWAITING INPUT';
+}
+function goHome(){
+  document.getElementById('detect').classList.add('hidden');
+  document.getElementById('home').classList.remove('hidden');
+  resetDetect();
+  document.getElementById('hudBR').innerHTML='STATUS: STANDBY<br>READY';
+}
+
+// ── File handling ──────────────────────────────────────────────────────────
+let currentFile = null;
+
+function handleFile(e){ loadFile(e.target.files[0]); }
+function dragOver(e){ e.preventDefault(); document.getElementById('uploadZone').classList.add('drag'); }
+function dragLeave(){ document.getElementById('uploadZone').classList.remove('drag'); }
+function dropFile(e){
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag');
+  loadFile(e.dataTransfer.files[0]);
+}
+
+function loadFile(file){
+  if(!file || !file.type.startsWith('image/')) return;
+  currentFile = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('previewImg').src = ev.target.result;
+    document.getElementById('uploadZone').style.display = 'none';
+    document.getElementById('previewWrap').classList.add('show');
+    document.getElementById('predictBtn').classList.add('show');
+    setStatus('IMAGE LOADED — READY','active');
+    document.getElementById('hudBR').innerHTML='STATUS: IMAGE LOADED<br>READY TO SCAN';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Status ─────────────────────────────────────────────────────────────────
+function setStatus(msg, state=''){
+  document.getElementById('statusText').textContent = msg;
+  const d = document.getElementById('statusDot');
+  d.className = 'status-dot' + (state ? ' '+state : '');
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3500);
+}
+
+// ── Prediction — calls Flask /predict ─────────────────────────────────────
+async function runPrediction(){
+  if(!currentFile){ showToast('NO FILE SELECTED'); return; }
+
+  const btn = document.getElementById('predictBtn');
+  btn.disabled = true;
+  document.getElementById('scanLine').classList.add('active');
+  setStatus('SCANNING TARGET...','active');
+  document.getElementById('hudBR').innerHTML='STATUS: SCANNING<br>PROCESSING...';
+  document.getElementById('procOverlay').classList.add('active');
+
+  const steps=['Preprocessing image...','Resizing to 1024×1024...','Running YOLOv8s forward pass...','Applying NMS threshold...','Extracting bounding boxes...','Generating report...'];
+  let si=0;
+  const iv=setInterval(()=>{ if(si<steps.length) document.getElementById('procStep').textContent=steps[si++]; },380);
+
+  try {
+    const formData = new FormData();
+    formData.append('file', currentFile);
+
+    const resp = await fetch('/predict', { method:'POST', body: formData });
+    const data = await resp.json();
+
+    clearInterval(iv);
+    document.getElementById('procOverlay').classList.remove('active');
+    document.getElementById('scanLine').classList.remove('active');
+    btn.disabled = false;
+
+    if(data.error){ showToast('ERROR: ' + data.error); setStatus('ERROR',''); return; }
+
+    showResult(data);
+
+  } catch(err){
+    clearInterval(iv);
+    document.getElementById('procOverlay').classList.remove('active');
+    document.getElementById('scanLine').classList.remove('active');
+    btn.disabled = false;
+    showToast('CONNECTION ERROR — is Flask running?');
+    setStatus('CONNECTION FAILED','');
+  }
+}
+
+// ── Render result from Flask response ─────────────────────────────────────
+function showResult(data){
+  const cls   = data.top || 'UNKNOWN';
+  const conf  = data.top_conf || 0;
+  const info  = data.aircraft || {};
+  const color = CLASS_COLORS[cls] || '#00ff88';
+  const confColor = conf>0.75?'#00ff88':conf>0.55?'#ffb800':'#ff3a3a';
+
+  document.getElementById('emptyState').style.display='none';
+
+  // Annotated image from backend
+  const imgBox = document.getElementById('predImgBox');
+  const oldImg = imgBox.querySelector('img.result-img');
+  if(oldImg) oldImg.remove();
+  if(data.image_b64){
+    const img = document.createElement('img');
+    img.className = 'result-img';
+    img.src = 'data:image/jpeg;base64,' + data.image_b64;
+    img.style.cssText='width:100%;display:block;object-fit:contain;max-height:260px';
+    imgBox.insertBefore(img, imgBox.querySelector('.pred-img-label'));
+  }
+  if(data.image_size){
+    document.getElementById('imgSizeInfo').textContent = data.image_size[0]+'×'+data.image_size[1]+'px';
+  }
+
+  // Name
+  const nm = document.getElementById('resName');
+  nm.textContent = cls; nm.style.color = color;
+  nm.style.textShadow = `0 0 25px ${color}55`;
+  document.getElementById('resFullName').textContent = info.full || cls;
+
+  // Confidence
+  document.getElementById('resConf').textContent = (conf*100).toFixed(1)+'%';
+  document.getElementById('resConf').style.color = confColor;
+  const fill = document.getElementById('confFill');
+  fill.style.background = confColor;
+  setTimeout(()=>fill.style.width=(conf*100)+'%', 150);
+
+  // Segments
+  const sr = document.getElementById('segRow'); sr.innerHTML='';
+  const n=24, active=Math.round(conf*n);
+  for(let i=0;i<n;i++){
+    const s=document.createElement('div'); s.className='seg'; s.style.background=confColor; sr.appendChild(s);
+    if(i<active) setTimeout(()=>s.classList.add('on'), 150+i*45);
+  }
+
+  // Info grid
+  document.getElementById('infoGrid').innerHTML=`
+    <div class="info-cell"><div class="info-key">Role</div><div class="info-val" style="font-size:11px">${info.role||'—'}</div></div>
+    <div class="info-cell"><div class="info-key">Origin</div><div class="info-val" style="font-size:11px">${(info.origin||'—').split(' / ')[0]}</div></div>
+    <div class="info-cell"><div class="info-key">Max Speed</div><div class="info-val">${info.speed||'—'}</div></div>
+    <div class="info-cell"><div class="info-key">Range</div><div class="info-val">${info.range||'—'}</div></div>
+    <div class="info-cell"><div class="info-key">Ceiling</div><div class="info-val">${info.ceiling||'—'}</div></div>
+    <div class="info-cell"><div class="info-key">Manufacturer</div><div class="info-val" style="font-size:10px">${(info.origin||'—').split(' / ')[1]||info.origin||'—'}</div></div>`;
+
+  // Writeup
+  document.getElementById('resWriteup').innerHTML = WRITEUPS[cls] || `<strong>${cls}</strong> — aircraft profile not available.`;
+
+  // All detections list
+  const detList = document.getElementById('detList'); detList.innerHTML='';
+  (data.detections||[]).forEach((d,i)=>{
+    const dcol  = CLASS_COLORS[d.class]||'#00ff88';
+    const dccol = d.confidence>0.5?'#00ff88':d.confidence>0.3?'#ffb800':'#ff3a3a';
+    const row   = document.createElement('div'); row.className='det-item';
+    row.innerHTML=`
+      <span class="det-num">#${i+1}</span>
+      <span class="det-class" style="color:${dcol}">${d.class}</span>
+      <div class="det-conf-bar"><div class="det-conf-fill" style="width:0%;background:${dccol}" data-w="${d.confidence*100}"></div></div>
+      <span class="det-conf-val">${(d.confidence*100).toFixed(1)}%</span>`;
+    detList.appendChild(row);
+  });
+  setTimeout(()=>{
+    document.querySelectorAll('.det-conf-fill').forEach(el=>{ el.style.width=el.dataset.w+'%'; });
+  },200);
+
+  document.getElementById('mainResult').classList.add('show');
+  document.getElementById('bottomRow').classList.add('show');
+
+  setStatus('TARGET IDENTIFIED: '+cls,'found');
+  document.getElementById('hudBR').innerHTML=`DETECTED: ${cls}<br>CONF: ${(conf*100).toFixed(1)}%`;
+  document.getElementById('hudBR').innerHTML+=data.demo_mode?'<br><span style="color:var(--amber)">DEMO MODE</span>':'';
+}
+
+// ── Reset ──────────────────────────────────────────────────────────────────
+function resetDetect(){
+  currentFile=null;
+  document.getElementById('uploadZone').style.display='flex';
+  document.getElementById('previewWrap').classList.remove('show');
+  document.getElementById('predictBtn').classList.remove('show');
+  document.getElementById('mainResult').classList.remove('show');
+  document.getElementById('bottomRow').classList.remove('show');
+  document.getElementById('emptyState').style.display='flex';
+  document.getElementById('previewImg').src='';
+  document.getElementById('fileInput').value='';
+  document.getElementById('confFill').style.width='0';
+  document.getElementById('segRow').innerHTML='';
+  const oldImg=document.getElementById('predImgBox').querySelector('img.result-img');
+  if(oldImg)oldImg.remove();
+  setStatus('AWAITING IMAGE UPLOAD','');
+}
+</script>
+</body>
+</html>

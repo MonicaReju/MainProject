@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AeroScan — Scan</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green:#00ff88;--green-dim:#00ff8820;--green-mid:#00ff8855;
+  --amber:#ffb800;--red:#ff3a3a;--blue:#00c8ff;
+  --bg:#050a0e;--surface:#0a1520;--surface2:#0d1a28;--surface3:#111f30;
+  --border:#1a3a50;--border2:#0f2535;--text:#c8e0f0;--text-dim:#4a7a9a;
+}
+html,body{min-height:100vh;background:var(--bg);font-family:'Rajdhani',sans-serif;color:var(--text);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,136,0.008) 2px,rgba(0,255,136,0.008) 4px);pointer-events:none;z-index:0}
+
+/* ── TOP NAV ── */
+.topnav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:52px;background:rgba(5,10,14,0.96);border-bottom:1px solid var(--border);backdrop-filter:blur(8px)}
+.nav-left{display:flex;align-items:center;gap:20px}
+.nav-logo{font-family:'Orbitron',monospace;font-size:16px;font-weight:900;letter-spacing:3px}
+.nav-logo span{color:var(--green)}
+.nav-tag{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:2px}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-stat{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:1px}
+.nav-stat em{color:var(--green);font-style:normal}
+#clockEl{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim)}
+
+/* ── MAIN LAYOUT ── */
+.scan-layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 52px);gap:0}
+
+/* ── LEFT SIDEBAR ── */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:20px 16px;gap:16px;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto}
+
+.sidebar-section-title{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--green);text-transform:uppercase;margin-bottom:8px}
+
+/* Upload zone — full height prominent */
+.upload-zone{border:1px dashed var(--border);background:var(--surface2);cursor:pointer;transition:all 0.3s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:28px 16px;min-height:180px}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--green);background:rgba(0,255,136,0.04)}
+.upload-zone svg{opacity:0.5;transition:opacity 0.3s}
+.upload-zone:hover svg{opacity:0.9}
+.upload-zone-text{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--text-dim);text-align:center}
+.upload-zone-sub{font-size:12px;color:var(--text-dim);opacity:0.5;letter-spacing:1px}
+#fileInput{display:none}
+
+/* Preview image in sidebar */
+.preview-area{position:relative;background:var(--surface2);border:1px solid var(--border);overflow:hidden;display:none;min-height:180px;align-items:center;justify-content:center}
+.preview-area.show{display:flex}
+.preview-area img{max-width:100%;max-height:220px;object-fit:contain;display:block}
+.scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);animation:scanMove 1.8s linear infinite;opacity:0}
+.scan-line.active{opacity:1}
+@keyframes scanMove{from{top:0}to{top:100%}}
+
+/* Action buttons */
+.run-btn{padding:14px;font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:4px;color:var(--bg);background:var(--green);border:none;cursor:pointer;text-transform:uppercase;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);transition:all 0.3s;display:none;width:100%}
+.run-btn.show{display:block}
+.run-btn:hover{box-shadow:0 0 28px rgba(0,255,136,0.5);transform:translateY(-1px)}
+.run-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+
+.new-scan-btn{padding:12px;font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:3px;color:var(--green);background:transparent;border:1px solid var(--green);cursor:pointer;text-transform:uppercase;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);transition:all 0.3s;width:100%}
+.new-scan-btn:hover{background:var(--green-dim);box-shadow:0 0 18px rgba(0,255,136,0.3)}
+
+/* Class legend — improved sizing */
+.class-legend{display:flex;flex-direction:column;gap:5px}
+.class-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);transition:border-color 0.2s}
+.class-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.class-name{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;min-width:40px}
+.class-role{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:0.5px}
+
+/* ── MAIN CONTENT ── */
+.main-content{padding:24px;display:flex;flex-direction:column;gap:24px;overflow-y:auto}
+
+/* Empty state */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:20px;opacity:0.3}
+.empty-state p{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:3px}
+
+/* ── RESULTS (hidden until scan) ── */
+.results-wrap{display:none;flex-direction:column;gap:24px}
+.results-wrap.show{display:flex}
+
+/* Section header */
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sec-title{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:4px;color:var(--green);text-transform:uppercase}
+.sec-badge{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:1px;padding:3px 10px;border:1px solid var(--border);background:var(--surface)}
+
+/* ── ROW 1: annotated image + detection summary side by side ── */
+.row1{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
+
+/* Annotated image — large and prominent */
+.annotated-wrap{background:var(--surface2);border:1px solid var(--border);overflow:hidden}
+.annotated-img-box{position:relative;min-height:300px;display:flex;align-items:center;justify-content:center;background:#000}
+.annotated-img-box img{width:100%;max-height:480px;object-fit:contain;display:block}
+.annotated-label{display:flex;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface)}
+.annotated-label span{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:1px}
+.annotated-label .hi{color:var(--green)}
+
+/* Detection list panel */
+.det-panel{background:var(--surface2);border:1px solid var(--border);padding:20px;display:flex;flex-direction:column;gap:14px}
+.det-item{background:var(--surface);border:1px solid var(--border2);padding:14px;transition:border-color 0.2s;cursor:default}
+.det-item:hover{border-color:var(--border)}
+.det-item-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.det-cls-name{font-family:'Orbitron',monospace;font-size:22px;font-weight:900;letter-spacing:2px}
+.det-conf-pct{font-family:'Orbitron',monospace;font-size:18px;font-weight:700}
+.det-full{font-size:11px;letter-spacing:3px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px}
+.det-bar-track{height:5px;background:rgba(255,255,255,0.06);border:1px solid var(--border2);overflow:hidden;margin-bottom:4px}
+.det-bar-fill{height:100%;width:0;transition:width 1.2s cubic-bezier(0.16,1,0.3,1)}
+.det-bbox{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text-dim);letter-spacing:1px}
+
+/* ── ROW 2: Aircraft profiles (one per detection) ── */
+.profiles-row{display:grid;gap:20px}
+.profiles-row.single{grid-template-columns:1fr}
+.profiles-row.dual{grid-template-columns:1fr 1fr}
+
+.profile-card{background:var(--surface2);border:1px solid var(--border);overflow:hidden}
+.profile-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px}
+.profile-rank{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:2px;border:1px solid var(--border);padding:4px 8px}
+.profile-cls{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;letter-spacing:2px}
+.profile-full{font-size:11px;letter-spacing:3px;color:var(--text-dim);text-transform:uppercase;margin-top:2px}
+.profile-conf-chip{margin-left:auto;font-family:'Orbitron',monospace;font-size:16px;font-weight:700;padding:6px 14px;border:1px solid currentColor}
+
+.profile-body{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.profile-stats{padding:16px 20px;border-right:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-cell{padding:10px;background:var(--surface);border:1px solid var(--border2)}
+.stat-key{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px}
+.stat-val{font-family:'Orbitron',monospace;font-size:13px;font-weight:600}
+
+.profile-desc{padding:16px 20px}
+.profile-desc-text{font-size:13px;line-height:1.9;color:var(--text-dim);letter-spacing:0.2px}
+.profile-desc-text strong{color:var(--text);font-weight:600}
+
+/* ── PROCESSING OVERLAY ── */
+.proc-overlay{position:fixed;inset:0;background:rgba(5,10,14,0.93);display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:999;backdrop-filter:blur(4px)}
+.proc-overlay.active{display:flex}
+.proc-ring{width:56px;height:56px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.proc-label{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:5px;color:var(--green)}
+.proc-step{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);letter-spacing:2px}
+.proc-bar-track{width:240px;height:3px;background:var(--border);overflow:hidden}
+.proc-bar-fill{height:100%;background:var(--green);width:0;transition:width 0.4s}
+
+/* ── STATUS BAR ── */
+.statusbar{display:flex;align-items:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--text-dim)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);flex-shrink:0;transition:all 0.3s}
+.status-dot.active{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.4s infinite}
+.status-dot.found{background:var(--green);box-shadow:0 0 8px var(--green)}
+.status-dot.error{background:var(--red);box-shadow:0 0 8px var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1a0a0a;border:1px solid var(--red);color:var(--red);font-family:'Share Tech Mono',monospace;font-size:11px;padding:10px 24px;letter-spacing:2px;z-index:9999;display:none;white-space:nowrap}
+.toast.show{display:block;animation:fadeUp 0.3s}
+@keyframes fadeUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* Demo badge */
+.demo-badge{background:#1a1000;border:1px solid var(--amber);color:var(--amber);font-family:'Share Tech Mono',monospace;font-size:9px;padding:3px 10px;letter-spacing:2px}
+</style>
+</head>
+<body>
+
+<!-- ── TOP NAV ── -->
+<nav class="topnav">
+  <div class="nav-left">
+    <div class="nav-logo">AERO<span>SCAN</span></div>
+    <div class="nav-tag">// MILITARY AIRCRAFT INTELLIGENCE</div>
+  </div>
+  <div class="nav-right">
+    <div class="nav-stat">YOLOv8s // 1024px &nbsp;|&nbsp; mAP@0.5 <em>84.13%</em> &nbsp;|&nbsp; 5 classes</div>
+    <div class="statusbar">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">STANDBY</span>
+    </div>
+    <div id="clockEl"></div>
+  </div>
+</nav>
+
+<!-- ── PROCESSING OVERLAY ── -->
+<div class="proc-overlay" id="procOverlay">
+  <div class="proc-ring"></div>
+  <div class="proc-label">ANALYZING TARGET</div>
+  <div class="proc-bar-track"><div class="proc-bar-fill" id="procBarFill"></div></div>
+  <div class="proc-step" id="procStep">Initializing...</div>
+</div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── MAIN LAYOUT ── -->
+<div class="scan-layout">
+
+  <!-- ── LEFT SIDEBAR ── -->
+  <aside class="sidebar">
+
+    <!-- Upload / Preview -->
+    <div>
+      <div class="sidebar-section-title">// Scan Input</div>
+      <div class="upload-zone" id="uploadZone"
+           onclick="document.getElementById('fileInput').click()"
+           ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+        <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+          <rect x="6" y="6" width="40" height="40" rx="2" stroke="#00ff88" stroke-width="1.2" stroke-dasharray="5 3"/>
+          <line x1="26" y1="17" x2="26" y2="35" stroke="#00ff88" stroke-width="1.8" stroke-linecap="round"/>
+          <polyline points="19,24 26,17 33,24" stroke="#00ff88" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <line x1="17" y1="38" x2="35" y2="38" stroke="#00ff88" stroke-width="1.2" opacity="0.5"/>
+        </svg>
+        <div class="upload-zone-text">UPLOAD IMAGE</div>
+        <div class="upload-zone-sub">JPG · PNG · drag &amp; drop</div>
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFile(event)">
+      </div>
+      <div class="preview-area" id="previewArea">
+        <img id="previewImg" src="" alt="">
+        <div class="scan-line" id="scanLine"></div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <button class="run-btn" id="runBtn" onclick="runPrediction()">▶ RUN DETECTION</button>
+    <button class="new-scan-btn" id="newScanBtn" onclick="newScan()" style="display:none">↺ NEW SCAN</button>
+
+    <!-- Class legend -->
+    <div>
+      <div class="sidebar-section-title">// Detectable Classes</div>
+      <div class="class-legend" id="classLegend"></div>
+    </div>
+
+  </aside>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="main-content">
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+        <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="32" y1="4" x2="32" y2="60" stroke="currentColor" stroke-width="0.5" opacity="0.5"/>
+        <line x1="4" y1="32" x2="60" y2="32" stroke="currentColor" stroke-width="0.5" opacity="0.5"/>
+        <circle cx="32" cy="32" r="4" fill="currentColor" opacity="0.4"/>
+        <circle cx="32" cy="32" r="14" stroke="currentColor" stroke-width="0.5" stroke-dasharray="3 3"/>
+      </svg>
+      <p>NO TARGET ACQUIRED</p>
+      <p style="font-size:10px;opacity:0.6">Upload an image on the left and run detection</p>
+    </div>
+
+    <!-- Results container -->
+    <div class="results-wrap" id="resultsWrap">
+
+      <!-- ROW 1: annotated image + all detections list -->
+      <div>
+        <div class="sec-header">
+          <span class="sec-title">// Detection Output</span>
+          <div style="display:flex;gap:10px;align-items:center">
+            <span class="demo-badge" id="demoBadge" style="display:none">DEMO MODE</span>
+            <div class="statusbar">
+              <div class="status-dot found"></div>
+              <span id="detCountLabel">—</span>
+            </div>
+          </div>
+        </div>
+        <div class="row1">
+          <!-- Annotated image — BIG -->
+          <div class="annotated-wrap">
+            <div class="annotated-img-box" id="annotatedImgBox">
+              <!-- injected by JS -->
+            </div>
+            <div class="annotated-label">
+              <span>DETECTION OUTPUT — YOLOv8s @ 1024px</span>
+              <span class="hi" id="imgDimsLabel">—</span>
+            </div>
+          </div>
+
+          <!-- All detections summary -->
+          <div class="det-panel">
+            <div class="sidebar-section-title" style="margin-bottom:4px">// All Detections</div>
+            <div id="detSummaryList"><!-- injected --></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ROW 2: Per-detection aircraft profile cards -->
+      <div>
+        <div class="sec-header">
+          <span class="sec-title">// Aircraft Intelligence</span>
+          <span class="sec-badge" id="profileCountLabel">—</span>
+        </div>
+        <div class="profiles-row" id="profilesRow">
+          <!-- injected per detection -->
+        </div>
+      </div>
+
+    </div><!-- /results-wrap -->
+  </main>
+</div><!-- /scan-layout -->
+
+<script>
+// ── Data ───────────────────────────────────────────────────────────────────
+const AC = {
+  F16:{full:'F-16 Fighting Falcon',role:'Multirole Fighter',origin:'USA',mfr:'General Dynamics',speed:'Mach 2.0',range:'3,200 km',ceiling:'15,240 m',color:'#E63946',
+    desc:'The <strong>F-16 Fighting Falcon</strong> is a single-engine supersonic multirole fighter developed by General Dynamics. First flown in 1974 and entering service in 1978, it became one of the most widely produced fighters ever built — over 4,600 units delivered to 25 nations. Its fly-by-wire flight controls, blended wing-body fuselage, and a single ventral air intake give it exceptional agility. The frameless bubble canopy provides the pilot 360° unobstructed visibility, a key advantage in close air combat. It excels in both air-to-air engagements and precision ground attack missions.'},
+  F18:{full:'F/A-18 Hornet',role:'Carrier Strike Fighter',origin:'USA',mfr:'McDonnell Douglas',speed:'Mach 1.8',range:'3,330 km',ceiling:'15,240 m',color:'#457B9D',
+    desc:'The <strong>F/A-18 Hornet</strong> is a twin-engine supersonic all-weather carrier-capable multirole combat aircraft. The backbone of US Navy and Marine Corps aviation, it is easily identified by its twin canted vertical tails, wide-set twin engines, and pronounced leading-edge extensions (LERX). It was the first production aircraft to use digital fly-by-wire controls and introduced the first digital glass cockpit on a carrier jet. The Hornet can transition from air superiority to ground attack in the same sortie without reconfiguration — a defining feature of its multirole design philosophy.'},
+  F35:{full:'F-35 Lightning II',role:'5th-Gen Stealth Multirole',origin:'USA',mfr:'Lockheed Martin',speed:'Mach 1.6',range:'2,220 km',ceiling:'18,288 m',color:'#2A9D8F',
+    desc:'The <strong>F-35 Lightning II</strong> is a family of single-engine fifth-generation stealth multirole fighters built by Lockheed Martin. Three variants cover conventional (F-35A), short-takeoff/vertical-landing (F-35B), and carrier operations (F-35C). It incorporates advanced radar-absorbing shaping, an active electronically scanned array (AESA) radar, and comprehensive sensor fusion that merges data from six distributed aperture cameras into a single battlefield picture displayed on the pilot\'s helmet. Its diverterless supersonic inlet (DSI) and single-piece canopy are visually distinctive recognition features.'},
+  F15:{full:'F-15 Eagle',role:'Air Superiority Fighter',origin:'USA',mfr:'McDonnell Douglas',speed:'Mach 2.5',range:'3,900 km',ceiling:'20,000 m',color:'#E9C46A',
+    desc:'The <strong>F-15 Eagle</strong> is a twin-engine all-weather tactical fighter with an undefeated combat record of over 100 aerial victories and zero losses in air-to-air combat. First flown in 1972 and operational since 1976, its exceptional thrust-to-weight ratio enables vertical climbs and unmatched energy management. The Eagle is identified by its large slab-sided twin-tail configuration, wide-set engine nacelles, and massive shoulder-mounted wings. Its advanced pulse-Doppler look-down shoot-down radar can track multiple targets simultaneously in heavy ground clutter — defining the air superiority mission for decades.'},
+  C130:{full:'C-130 Hercules',role:'Military Transport',origin:'USA',mfr:'Lockheed Corporation',speed:'643 km/h',range:'6,850 km',ceiling:'10,060 m',color:'#9B5DE5',
+    desc:'The <strong>C-130 Hercules</strong> is a four-engine turboprop military transport aircraft in continuous production since 1954 — the longest production run of any military aircraft. Over 2,500 units have been delivered to more than 63 nations. The Hercules is instantly recognized by its distinctive high-wing configuration, four Allison T56 turboprop engines with large four-blade propellers, an unpressurized boxy fuselage cross-section designed for maximum cargo volume, and an upswept rear fuselage with a full-width hydraulic loading ramp. It is capable of operating from unprepared dirt or grass strips under combat conditions.'}
+};
+const COLORS = Object.fromEntries(Object.entries(AC).map(([k,v])=>[k,v.color]));
+const CLASS_LIST = Object.keys(AC);
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+function tick(){document.getElementById('clockEl').textContent=new Date().toISOString().replace('T',' ').slice(0,19)+' UTC'}
+setInterval(tick,1000); tick();
+
+// ── Build class legend ─────────────────────────────────────────────────────
+const leg = document.getElementById('classLegend');
+CLASS_LIST.forEach(k=>{
+  const row = document.createElement('div');
+  row.className = 'class-row';
+  row.innerHTML = `<div class="class-dot" style="background:${AC[k].color};box-shadow:0 0 8px ${AC[k].color}50"></div>
+    <span class="class-name" style="color:${AC[k].color}">${k}</span>
+    <span class="class-role">${AC[k].role}</span>`;
+  leg.appendChild(row);
+});
+
+// ── Status helper ──────────────────────────────────────────────────────────
+function setStatus(msg, state=''){
+  document.getElementById('statusText').textContent = msg;
+  const d = document.getElementById('statusDot');
+  d.className = 'status-dot' + (state ? ' '+state : '');
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3500);
+}
+
+// ── File handling ──────────────────────────────────────────────────────────
+let currentFile = null;
+function handleFile(e){ loadFile(e.target.files[0]); }
+function dragOver(e){ e.preventDefault(); document.getElementById('uploadZone').classList.add('drag'); }
+function dragLeave(){ document.getElementById('uploadZone').classList.remove('drag'); }
+function dropFile(e){
+  e.preventDefault();
+  document.getElementById('uploadZone').classList.remove('drag');
+  loadFile(e.dataTransfer.files[0]);
+}
+
+function loadFile(file){
+  if(!file || !file.type.startsWith('image/')) return;
+  currentFile = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const prev = document.getElementById('previewImg');
+    prev.src = ev.target.result;
+    document.getElementById('uploadZone').style.display = 'none';
+    document.getElementById('previewArea').classList.add('show');
+    document.getElementById('runBtn').classList.add('show');
+    setStatus('IMAGE LOADED — READY', 'active');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── New scan ───────────────────────────────────────────────────────────────
+function newScan(){
+  currentFile = null;
+  document.getElementById('uploadZone').style.display = 'flex';
+  document.getElementById('previewArea').classList.remove('show');
+  document.getElementById('previewImg').src = '';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('runBtn').classList.remove('show');
+  document.getElementById('newScanBtn').style.display = 'none';
+  document.getElementById('resultsWrap').classList.remove('show');
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('annotatedImgBox').innerHTML = '';
+  document.getElementById('detSummaryList').innerHTML = '';
+  document.getElementById('profilesRow').innerHTML = '';
+  setStatus('STANDBY', '');
+}
+
+// ── Prediction ─────────────────────────────────────────────────────────────
+async function runPrediction(){
+  if(!currentFile){ showToast('NO FILE SELECTED'); return; }
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  document.getElementById('scanLine').classList.add('active');
+  setStatus('SCANNING...', 'active');
+
+  // Animated steps
+  const overlay = document.getElementById('procOverlay');
+  const barFill  = document.getElementById('procBarFill');
+  const stepEl   = document.getElementById('procStep');
+  overlay.classList.add('active');
+
+  const steps = [
+    [10,'Preprocessing image...'],
+    [25,'Resizing to 1024×1024...'],
+    [45,'Running YOLOv8s forward pass...'],
+    [65,'Applying NMS threshold...'],
+    [80,'Extracting bounding boxes...'],
+    [92,'Rendering annotations...'],
+    [100,'Generating intelligence report...']
+  ];
+  let si = 0;
+  const iv = setInterval(()=>{
+    if(si < steps.length){
+      barFill.style.width = steps[si][0]+'%';
+      stepEl.textContent = steps[si][1];
+      si++;
+    }
+  }, 350);
+
+  try {
+    const fd = new FormData();
+    fd.append('file', currentFile);
+
+    const resp = await fetch('/predict', {method:'POST', body: fd});
+    const data = await resp.json();
+
+    clearInterval(iv);
+    barFill.style.width = '100%';
+    await new Promise(r=>setTimeout(r,300));
+    overlay.classList.remove('active');
+    barFill.style.width = '0';
+
+    document.getElementById('scanLine').classList.remove('active');
+    btn.disabled = false;
+
+    if(data.error){ showToast('ERROR: '+data.error); setStatus('ERROR','error'); return; }
+
+    renderResults(data);
+
+  } catch(err){
+    clearInterval(iv);
+    overlay.classList.remove('active');
+    document.getElementById('scanLine').classList.remove('active');
+    btn.disabled = false;
+    showToast('CONNECTION ERROR — is Flask running on port 5000?');
+    setStatus('CONNECTION FAILED','error');
+  }
+}
+
+// ── Render results ─────────────────────────────────────────────────────────
+function renderResults(data){
+  const dets   = data.detections || [];
+  const top    = data.top || 'UNKNOWN';
+  const topConf = data.top_conf || 0;
+
+  // Show/hide demo badge
+  document.getElementById('demoBadge').style.display = data.demo_mode ? 'inline-block' : 'none';
+
+  // Hide empty state, show results
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('resultsWrap').classList.add('show');
+  document.getElementById('newScanBtn').style.display = 'block';
+  document.getElementById('runBtn').classList.remove('show');
+
+  // Update labels
+  document.getElementById('detCountLabel').textContent = `${dets.length} TARGET${dets.length!==1?'S':''} DETECTED`;
+  document.getElementById('profileCountLabel').textContent = `${dets.length} PROFILE${dets.length!==1?'S':''}`;
+  if(data.image_size) document.getElementById('imgDimsLabel').textContent = data.image_size[0]+'×'+data.image_size[1]+'px';
+
+  // ── Annotated image (large) ──────────────────────────────────────────────
+  const imgBox = document.getElementById('annotatedImgBox');
+  imgBox.innerHTML = '';
+  if(data.image_b64){
+    const img = document.createElement('img');
+    img.src = 'data:image/jpeg;base64,' + data.image_b64;
+    img.style.cssText = 'width:100%;max-height:500px;object-fit:contain;display:block';
+    imgBox.appendChild(img);
+  }
+
+  // ── Detection summary list ────────────────────────────────────────────────
+  const sumList = document.getElementById('detSummaryList');
+  sumList.innerHTML = '';
+  if(dets.length === 0){
+    sumList.innerHTML = `<div style="padding:20px;text-align:center;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--text-dim);border:1px solid var(--border2);background:var(--surface)">NO AIRCRAFT DETECTED</div>`;
+  }
+  dets.forEach((d,i)=>{
+    const col   = COLORS[d.class] || '#00ff88';
+    const pct   = (d.confidence*100).toFixed(1);
+    const cCol  = d.confidence>0.65?'#00ff88':d.confidence>0.45?'#ffb800':'#ff3a3a';
+    const bbox  = d.bbox ? `[${d.bbox.join(', ')}]` : '';
+
+    const el = document.createElement('div');
+    el.className = 'det-item';
+    el.innerHTML = `
+      <div class="det-item-top">
+        <span class="det-cls-name" style="color:${col}">${d.class}</span>
+        <span class="det-conf-pct" style="color:${cCol}">${pct}%</span>
+      </div>
+      <div class="det-full">#${i+1} — ${(AC[d.class]?.full) || d.class}</div>
+      <div class="det-bar-track">
+        <div class="det-bar-fill" style="background:${cCol}" data-w="${d.confidence*100}"></div>
+      </div>
+      <div class="det-bbox">${bbox}</div>`;
+    sumList.appendChild(el);
+  });
+  setTimeout(()=>{
+    document.querySelectorAll('.det-bar-fill').forEach(el=>{ el.style.width=el.dataset.w+'%'; });
+  },150);
+
+  // ── Per-detection profile cards ───────────────────────────────────────────
+  const profilesRow = document.getElementById('profilesRow');
+  profilesRow.className = 'profiles-row ' + (dets.length >= 2 ? 'dual' : 'single');
+  profilesRow.innerHTML = '';
+
+  dets.forEach((d,i)=>{
+    const info = AC[d.class] || {};
+    const col  = COLORS[d.class] || '#00ff88';
+    const pct  = (d.confidence*100).toFixed(1);
+    const cCol = d.confidence>0.65?'#00ff88':d.confidence>0.45?'#ffb800':'#ff3a3a';
+
+    const card = document.createElement('div');
+    card.className = 'profile-card';
+    card.style.borderColor = col+'66';
+    card.innerHTML = `
+      <div class="profile-header" style="border-bottom-color:${col}33">
+        <span class="profile-rank">#${i+1}</span>
+        <div>
+          <div class="profile-cls" style="color:${col};text-shadow:0 0 20px ${col}44">${d.class}</div>
+          <div class="profile-full">${info.full || d.class}</div>
+        </div>
+        <span class="profile-conf-chip" style="color:${cCol};border-color:${cCol}">${pct}%</span>
+      </div>
+      <div class="profile-body">
+        <div class="profile-stats">
+          <div class="stat-cell"><div class="stat-key">Role</div><div class="stat-val" style="font-size:11px">${info.role||'—'}</div></div>
+          <div class="stat-cell"><div class="stat-key">Origin</div><div class="stat-val">${info.origin||'—'}</div></div>
+          <div class="stat-cell"><div class="stat-key">Max Speed</div><div class="stat-val">${info.speed||'—'}</div></div>
+          <div class="stat-cell"><div class="stat-key">Range</div><div class="stat-val">${info.range||'—'}</div></div>
+          <div class="stat-cell"><div class="stat-key">Ceiling</div><div class="stat-val">${info.ceiling||'—'}</div></div>
+          <div class="stat-cell"><div class="stat-key">Manufacturer</div><div class="stat-val" style="font-size:11px">${info.mfr||'—'}</div></div>
+        </div>
+        <div class="profile-desc">
+          <div class="sidebar-section-title" style="margin-bottom:10px">Aircraft Profile</div>
+          <div class="profile-desc-text">${info.desc || 'No profile available.'}</div>
+        </div>
+      </div>`;
+    profilesRow.appendChild(card);
+  });
+
+  setStatus(`TARGET${dets.length!==1?'S':''} IDENTIFIED: ${dets.map(d=>d.class).join(', ')}`, 'found');
+}
+</script>
+</body>
+</html>
