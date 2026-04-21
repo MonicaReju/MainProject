@@ -18,17 +18,28 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 
 # ── Load model once at startup ─────────────────────────────────────────────
 MODEL_PATH = Path('model/best.pt')
+MODEL_URL = "PASTE_YOUR_MODEL_LINK_HERE" 
 
 print("=" * 60)
 print("AEROSCAN — Military Aircraft Detection")
 print("=" * 60)
 
+# Create model folder
+os.makedirs("model", exist_ok=True)
+
+# Download model if not exists
+if not MODEL_PATH.exists():
+    print("Downloading model...")
+    import urllib.request
+    urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+
+# Load model
 if MODEL_PATH.exists():
     print(f"Loading model from {MODEL_PATH} ...")
     model = YOLO(str(MODEL_PATH))
     print(f"Model loaded — classes: {model.names}")
 else:
-    print("WARNING: model/best.pt not found. Using demo mode.")
+    print("WARNING: model not found. Using demo mode.")
     model = None
 
 print("=" * 60)
